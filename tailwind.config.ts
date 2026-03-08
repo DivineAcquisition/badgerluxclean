@@ -9,19 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        "brand-bg": "#0A0A0A",
-        "brand-card": "#1A1A1A",
-        "brand-section": "#141414",
-        "brand-banner": "#0D0D0D",
-        "brand-gold": "#EDC02C",
-        "brand-table-header": "#2A2A2A",
-        "brand-table-even": "#F5F5F5",
-        "brand-table-odd": "#FFFFFF",
-        "brand-text": "#DDDDDD",
-        "brand-muted": "#999999",
-        "brand-green": "#2ECC71",
-        "brand-red": "#E74C3C",
-        "brand-yellow": "#F39C12",
+        brand: {
+          DEFAULT: "#EDC02C",
+          light: "#F5D45A",
+          50: "#FFF9E5",
+          100: "#FFF3CC",
+          200: "#FFE799",
+          700: "#B8950E",
+          800: "#8A6F0A",
+        },
       },
     },
   },

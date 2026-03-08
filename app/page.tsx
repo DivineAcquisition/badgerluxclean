@@ -13,26 +13,13 @@ import {
   useFilteredKPIs,
   useFilteredLeads,
 } from "@/lib/hooks";
-import {
-  LiveIndicator,
-  MonthPicker,
-  SyncButton,
-} from "@/components/ui";
+import { LiveIndicator, MonthPicker, SyncButton } from "@/components/ui";
+import Sidebar from "@/components/Sidebar";
 import OverviewTab from "@/components/tabs/OverviewTab";
 import SalesTab from "@/components/tabs/SalesTab";
 import RetentionTab from "@/components/tabs/RetentionTab";
 import VATab from "@/components/tabs/VATab";
 import FinancialTab from "@/components/tabs/FinancialTab";
-
-const TABS = [
-  { key: "overview", label: "Overview", icon: "📊" },
-  { key: "sales", label: "Sales & Leads", icon: "🎯" },
-  { key: "retention", label: "Retention", icon: "🔄" },
-  { key: "va", label: "VA Performance", icon: "👥" },
-  { key: "financial", label: "Financial", icon: "💰" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
 
 function parseMonthRange(
   month: string
@@ -55,7 +42,7 @@ function parseMonthRange(
 
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [activeTab, setActiveTab] = useState("overview");
   const [selectedMonth, setSelectedMonth] = useState("All Time");
 
   const range = useMemo(() => parseMonthRange(selectedMonth), [selectedMonth]);
@@ -80,95 +67,73 @@ export default function Dashboard() {
     });
   }, []);
 
-  // Auth: loading
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
-        <p className="text-brand-gold animate-pulse text-lg">Loading…</p>
-      </main>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-brand animate-pulse text-lg">Loading…</p>
+      </div>
     );
   }
 
-  // Auth: not signed in — redirect handled client-side
   if (!user) {
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
     return (
-      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
-        <p className="text-brand-gold animate-pulse text-lg">
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-brand animate-pulse text-lg">
           Redirecting to login…
         </p>
-      </main>
+      </div>
     );
   }
 
-  // Data loading
   if (kpisLoading) {
     return (
-      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
-        <p className="text-brand-gold animate-pulse text-lg">
-          Loading dashboard…
-        </p>
-      </main>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-brand text-lg font-bold tracking-tight mb-2">
+            BADGERLUXCLEAN
+          </h1>
+          <p className="text-neutral-500 text-sm animate-pulse">
+            Loading dashboard…
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-brand-banner border-b-[3px] border-brand-gold px-6 py-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div className="flex h-screen bg-black">
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userEmail={user.email || ""}
+        onSignOut={signOut}
+      />
+
+      <main className="flex-1 overflow-y-auto">
+        {/* Top bar */}
+        <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-neutral-800 px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-[20px] font-bold tracking-[4px] text-brand-gold">
-              BADGERLUXCLEAN
-            </h1>
-            <p className="text-[10px] text-gray-600 tracking-wide">
-              DATA COMMAND CENTER
-            </p>
+            <h2 className="text-xl font-bold text-white">
+              {activeTab === "overview" && "Command Center"}
+              {activeTab === "sales" && "Sales & Leads"}
+              {activeTab === "retention" && "Retention"}
+              {activeTab === "va" && "VA Performance"}
+              {activeTab === "financial" && "Financial"}
+            </h2>
+            <p className="text-neutral-500 text-sm">Real-time operational pulse</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-4">
             <LiveIndicator lastSync={lastSync} />
             <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             <SyncButton onSync={handleSync} />
-            <span className="text-gray-600 text-[10px] hidden md:inline">
-              {user.email}
-            </span>
-            <button
-              onClick={signOut}
-              className="text-gray-600 text-xs hover:text-gray-400 transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
         </div>
-      </header>
 
-      {/* Navigation */}
-      <nav className="sticky top-[73px] z-40 bg-[#111111] border-b border-[#222] overflow-x-auto">
-        <div className="flex">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-2.5 text-[12px] font-semibold whitespace-nowrap transition-all duration-200 border-b-2 ${
-                activeTab === tab.key
-                  ? "text-brand-gold border-brand-gold bg-brand-card"
-                  : "text-gray-600 border-transparent hover:text-gray-400"
-              }`}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 pb-16">
-        <div
-          key={activeTab}
-          className="animate-[fadeIn_200ms_ease-in-out]"
-        >
+        {/* Content */}
+        <div className="p-8 animate-fadeIn" key={activeTab}>
           {activeTab === "overview" && (
             <OverviewTab
               kpis={kpis}
@@ -199,15 +164,18 @@ export default function Dashboard() {
           {activeTab === "financial" && (
             <FinancialTab kpis={kpis} monthly={monthly} />
           )}
+
+          {/* Footer */}
+          <div className="text-center py-12 mt-8 border-t border-neutral-800">
+            <p className="text-xs text-neutral-600">
+              BADGERLUXCLEAN DATA COMMAND CENTER — Built by{" "}
+              <span className="text-brand/60 font-medium">
+                Divine Acquisition
+              </span>
+            </p>
+          </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="text-center py-8">
-        <p className="text-[10px] text-gray-700">
-          BADGERLUXCLEAN DATA COMMAND CENTER — Built by Divine Acquisition
-        </p>
-      </footer>
     </div>
   );
 }

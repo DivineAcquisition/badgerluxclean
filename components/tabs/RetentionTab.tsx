@@ -14,7 +14,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { KPIs, MonthlyRow, RetentionData } from "@/lib/supabase";
-import { KPICard, SectionHeader, EmptyState } from "@/components/ui";
+import { KPICard, SectionHeader, EmptyState, Card } from "@/components/ui";
 
 interface Props {
   retention: RetentionData | null;
@@ -22,7 +22,7 @@ interface Props {
   monthly: MonthlyRow[];
 }
 
-function fmtMonthShort(m: string): string {
+function fmtShort(m: string): string {
   if (!m) return "";
   const [y, mo] = m.split("-");
   const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -34,165 +34,72 @@ function fmtAxis(v: number): string {
   return `$${v}`;
 }
 
+const TOOLTIP_STYLE = {
+  backgroundColor: "#171717",
+  border: "1px solid #333",
+  borderRadius: 8,
+  fontSize: 12,
+};
+
 export default function RetentionTab({ retention, kpis, monthly }: Props) {
-  if (!retention || !kpis)
-    return <EmptyState message="No retention data available yet." />;
+  if (!retention || !kpis) return <EmptyState message="No retention data available yet." />;
 
-  const recurGrowth = monthly.map((r) => ({
-    month: fmtMonthShort(r.month),
-    recur_revenue: r.recur_revenue,
-  }));
-
-  // Estimated retention trend per month
+  const recurGrowth = monthly.map((r) => ({ month: fmtShort(r.month), recur_revenue: r.recur_revenue }));
   const retentionTrend = monthly.map((r) => {
     const total = r.recur_customers + (r.recur_customers > 0 ? 1 : 0);
-    const pct =
-      total > 0
-        ? Math.round((r.recur_customers / Math.max(total, 1)) * 1000) / 10
-        : 0;
-    return { month: fmtMonthShort(r.month), retention: pct };
+    const pct = total > 0 ? Math.round((r.recur_customers / Math.max(total, 1)) * 1000) / 10 : 0;
+    return { month: fmtShort(r.month), retention: pct };
   });
 
   return (
     <>
-      {/* Recurring Client Health */}
-      <SectionHeader icon="🔄">Recurring Client Health</SectionHeader>
-      <div className="flex flex-wrap gap-3 mt-4">
-        <KPICard
-          label="Active Recurring"
-          value={retention.active_recurring}
-          color="#2ECC71"
-          subtitle="clients on schedule"
-        />
-        <KPICard
-          label="MRR"
-          value={kpis.mrr}
-          color="#2ECC71"
-          subtitle="frequency-adjusted"
-        />
-        <KPICard
-          label="Lifetime Retention %"
-          value={retention.retention_pct}
-          color="#F39C12"
-          subtitle={`${retention.active_recurring} of ${retention.total_ever_recurring} ever acquired`}
-        />
-        <KPICard
-          label="Churned All Time"
-          value={retention.churned}
-          color="#E74C3C"
-        />
-        <KPICard
-          label="Revenue Lost to Churn"
-          value="—"
-          color="#E74C3C"
-          subtitle="activates with cancellation data"
-        />
+      <SectionHeader icon="◈">Recurring Client Health</SectionHeader>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <KPICard label="Active Recurring" value={retention.active_recurring} color="green" subtitle="clients on schedule" />
+        <KPICard label="MRR" value={kpis.mrr} color="green" subtitle="frequency-adjusted" />
+        <KPICard label="Lifetime Retention %" value={retention.retention_pct} color="amber" subtitle={`${retention.active_recurring} of ${retention.total_ever_recurring} ever acquired`} />
+        <KPICard label="Churned All Time" value={retention.churned} color="red" />
+        <KPICard label="Revenue Lost to Churn" value="—" color="red" subtitle="activates with cancellation data" />
       </div>
 
-      {/* Frequency Breakdown — placeholder */}
-      <SectionHeader icon="📊">Frequency Breakdown</SectionHeader>
-      <div className="bg-brand-card rounded-lg p-5 mt-4">
-        <p className="text-sm text-gray-500">
-          Frequency-level breakdown (Weekly, EOW, Monthly, Quarterly) will
-          populate once bookings data is enriched with per-frequency active
-          counts. Wire from raw bookings grouped by frequency + status.
+      <SectionHeader icon="◎">Frequency Breakdown</SectionHeader>
+      <Card className="mb-6">
+        <p className="text-sm text-neutral-500">
+          Frequency-level breakdown (Weekly, EOW, Monthly, Quarterly) will populate once bookings data is enriched with per-frequency active counts.
         </p>
-      </div>
+      </Card>
 
-      {/* Recurring Revenue Growth */}
-      <SectionHeader icon="📈">Recurring Revenue Growth</SectionHeader>
-      <div className="bg-brand-card rounded-lg p-5 mt-4">
-        {recurGrowth.length === 0 ? (
-          <EmptyState message="No recurring revenue data yet." />
-        ) : (
+      <SectionHeader icon="◆">Recurring Revenue Growth</SectionHeader>
+      <Card className="mb-6">
+        {recurGrowth.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={recurGrowth}>
-              <CartesianGrid stroke="#222" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "#FFF", fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={fmtAxis}
-                tick={{ fill: "#999", fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1A1A1A",
-                  border: "1px solid #333",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                formatter={(v) => [`$${Math.round(Number(v)).toLocaleString()}`, "Recurring Rev"]}
-              />
-              <Area
-                type="monotone"
-                dataKey="recur_revenue"
-                stroke="#2ECC71"
-                fill="#2ECC71"
-                fillOpacity={0.4}
-              />
+              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtAxis} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`$${Math.round(Number(v)).toLocaleString()}`, "Recurring Rev"]} />
+              <Area type="monotone" dataKey="recur_revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
             </AreaChart>
           </ResponsiveContainer>
         )}
-      </div>
+      </Card>
 
-      {/* Retention Trend (estimated) */}
-      <SectionHeader icon="📉">Monthly Retention Trend (Estimated)</SectionHeader>
-      <div className="bg-brand-card rounded-lg p-5 mt-4">
-        <p className="text-[10px] text-gray-500 mb-3">
-          * Estimated from monthly recurring customer count. Exact churn-per-month
-          data will improve accuracy after cancellations are enriched.
-        </p>
-        {retentionTrend.length === 0 ? (
-          <EmptyState message="No trend data yet." />
-        ) : (
+      <SectionHeader icon="◉">Monthly Retention Trend (Estimated)</SectionHeader>
+      <Card>
+        <p className="text-xs text-neutral-600 mb-3">* Estimated from monthly recurring customer count.</p>
+        {retentionTrend.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={retentionTrend}>
-              <CartesianGrid stroke="#222" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "#FFF", fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fill: "#999", fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <ReferenceLine
-                y={80}
-                stroke="#2ECC71"
-                strokeDasharray="6 4"
-                label={{ value: "80% target", fill: "#2ECC71", fontSize: 10, position: "right" }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1A1A1A",
-                  border: "1px solid #333",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                formatter={(v) => [`${Number(v).toFixed(1)}%`, "Retention"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="retention"
-                stroke="#EDC02C"
-                strokeWidth={2}
-                dot={{ fill: "#EDC02C", r: 3 }}
-              />
+              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+              <ReferenceLine y={80} stroke="#10b981" strokeDasharray="6 4" label={{ value: "80% target", fill: "#10b981", fontSize: 10, position: "right" }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${Number(v).toFixed(1)}%`, "Retention"]} />
+              <Line type="monotone" dataKey="retention" stroke="#EDC02C" strokeWidth={2} dot={{ fill: "#EDC02C", r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
-      </div>
+      </Card>
     </>
   );
 }
