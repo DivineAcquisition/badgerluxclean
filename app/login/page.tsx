@@ -13,17 +13,29 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/");
-    }
+    if (!loading && user) router.push("/");
   }, [user, loading, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
+
     try {
-      await signIn(email, password);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Login failed");
+        setSubmitting(false);
+        return;
+      }
+
+      await signIn(email.toLowerCase(), password);
       router.push("/");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign in failed");
@@ -35,7 +47,7 @@ export default function LoginPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-brand animate-pulse">Loading…</p>
+        <div className="w-7 h-7 rounded-lg bg-brand animate-pulse" />
       </div>
     );
   }
@@ -44,61 +56,61 @@ export default function LoginPage() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-brand tracking-tight">
-            BADGERLUXCLEAN
+          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mx-auto mb-4">
+            <span className="text-black text-sm font-bold">BL</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            BadgerLuxClean
           </h1>
-          <p className="text-neutral-500 mt-2 text-sm">
+          <p className="text-neutral-500 mt-1 text-sm">
             Data Command Center
           </p>
         </div>
 
-        <div className="bg-neutral-900 rounded-xl p-8 border border-neutral-800 shadow-sm">
+        <div className="card-elevated p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm text-neutral-500 block mb-1">
-                Email
-              </label>
+              <label className="text-sm text-neutral-500 block mb-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-                placeholder="you@company.com"
+                className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-lg px-4 text-white text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition-colors"
+                placeholder="you@badgerluxecleaning.com"
               />
             </div>
             <div>
-              <label className="text-sm text-neutral-500 block mb-1">
-                Password
-              </label>
+              <label className="text-sm text-neutral-500 block mb-1">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-lg px-4 text-white text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 transition-colors"
                 placeholder="••••••••"
               />
             </div>
 
-            {error && (
-              <p className="text-red-400 text-sm">{error}</p>
-            )}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-brand hover:bg-brand-light text-black font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              className="w-full h-10 bg-brand hover:bg-brand/90 text-black font-semibold rounded-lg transition-all disabled:opacity-50 shadow-sm shadow-brand/20 hover:shadow-md hover:shadow-brand/30"
             >
               {submitting ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          <p className="text-xs text-neutral-600 text-center mt-4">
+            Authorized for @badgerluxecleaning.com and @divineacquisition.io
+          </p>
         </div>
       </div>
 
-      <p className="mt-12 text-xs text-neutral-600">
-        Powered by{" "}
-        <span className="text-brand/60 font-medium">DivineAcquisition</span>
+      <p className="mt-12 text-xs text-neutral-700">
+        Powered by <span className="text-brand/50 font-medium">DivineAcquisition</span>
       </p>
     </div>
   );
