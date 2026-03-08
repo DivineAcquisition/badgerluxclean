@@ -19,17 +19,24 @@ export function useRealtimeBookings(callback: () => void) {
   cbRef.current = callback;
 
   useEffect(() => {
-    const channel = supabase
-      .channel("bookings-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "bookings" },
-        () => cbRef.current()
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel("bookings-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "bookings" },
+          () => cbRef.current()
+        )
+        .subscribe();
+    } catch (e) {
+      console.error("Realtime subscription error:", e);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch { /* ignore */ }
+      }
     };
   }, []);
 }
