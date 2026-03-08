@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const sheetApiUrl = process.env.SHEET_API_URL!;
-const sheetApiSecret = process.env.SHEET_API_SECRET!;
-const syncSecret = process.env.SYNC_SECRET!;
-
-const admin = createClient(supabaseUrl, serviceRoleKey);
+let _admin: SupabaseClient | null = null;
+function getAdmin(): SupabaseClient {
+  if (!_admin) {
+    _admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+    );
+  }
+  return _admin;
+}
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -168,7 +171,7 @@ async function batchUpsert(
   let count = 0;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const { error } = await admin
+    const { error } = await getAdmin()
       .from(table)
       .upsert(batch, { onConflict: conflictKey });
     if (error) {
@@ -188,7 +191,7 @@ async function batchInsert(
   let count = 0;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const { error } = await admin.from(table).insert(batch);
+    const { error } = await getAdmin().from(table).insert(batch);
     if (error) {
       console.error(`Insert error on ${table} batch ${i}:`, error.message);
     } else {
@@ -201,21 +204,23 @@ async function batchInsert(
 // ─── Auth Check ─────────────────────────────────────
 
 function authorize(req: NextRequest): boolean {
+  const secret = process.env.SYNC_SECRET ?? "";
   const auth = req.headers.get("authorization");
-  if (auth?.startsWith("Bearer ") && auth.slice(7) === syncSecret) return true;
+  if (auth?.startsWith("Bearer ") && auth.slice(7) === secret) return true;
 
   try {
     const url = new URL(req.url);
-    if (url.searchParams.get("secret") === syncSecret) return true;
+    if (url.searchParams.get("secret") === secret) return true;
   } catch { /* ignore */ }
 
   return false;
 }
 
 async function authorizeBody(req: NextRequest): Promise<boolean> {
+  const secret = process.env.SYNC_SECRET ?? "";
   try {
     const body = await req.clone().json();
-    if (body?.secret === syncSecret) return true;
+    if (body?.secret === secret) return true;
   } catch { /* ignore */ }
   return false;
 }
@@ -230,6 +235,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const sheetApiUrl = process.env.SHEET_API_URL ?? "";
+    const sheetApiSecret = process.env.SHEET_API_SECRET ?? "";
     const sheetUrl = `${sheetApiUrl}?action=readAll&secret=${sheetApiSecret}`;
     const res = await fetch(sheetUrl, { cache: "no-store" });
 
@@ -285,12 +292,12 @@ export async function POST(req: NextRequest) {
       const mapped = (data.Leads_Archive.rows as SheetRow[])
         .map(mapLead)
         .filter((r) => r.name || r.email);
-      await admin.from("leads").delete().neq("id", 0);
+      await getAdmin().from("leads").delete().neq("id", 0);
       results.leads = await batchInsert("leads", mapped);
     }
 
     // Refresh materialized views
-    await admin.rpc("refresh_dashboard_views");
+    await getAdmin().rpc("refresh_dashboard_views");
 
     return NextResponse.json({
       success: true,
@@ -311,6 +318,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
+    const sheetApiUrl = process.env.SHEET_API_URL ?? "";
+    const sheetApiSecret = process.env.SHEET_API_SECRET ?? "";
     const pingUrl = `${sheetApiUrl}?action=ping&secret=${sheetApiSecret}`;
     const res = await fetch(pingUrl, { cache: "no-store" });
     const body = await res.text();
