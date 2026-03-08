@@ -3,15 +3,9 @@
 import React, { useState, useMemo, useCallback, Component, ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import {
-  useKPIs,
-  useMonthly,
-  useSources,
-  useVAPerformance,
-  useRetention,
-  useObjections,
-  useLastSync,
-  useFilteredKPIs,
-  useFilteredLeads,
+  useKPIs, useMonthly, useSources, useVAPerformance,
+  useRetention, useObjections, useLastSync,
+  useFilteredKPIs, useFilteredLeads,
 } from "@/lib/hooks";
 import { LiveIndicator, MonthPicker, SyncButton } from "@/components/ui";
 import Sidebar from "@/components/Sidebar";
@@ -38,12 +32,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
       return (
         <div className="min-h-screen bg-black flex items-center justify-center p-8">
           <div className="text-center max-w-md">
-            <h1 className="text-brand text-lg font-bold tracking-tight mb-2">BADGERLUXCLEAN</h1>
-            <p className="text-neutral-400 text-sm mb-4">Something went wrong loading the dashboard.</p>
+            <h1 className="text-brand text-lg font-bold mb-2">BADGERLUXCLEAN</h1>
+            <p className="text-neutral-400 text-sm mb-4">Something went wrong.</p>
             <p className="text-neutral-600 text-xs font-mono mb-6">{this.state.error}</p>
-            <button onClick={() => window.location.reload()} className="bg-brand text-black font-medium px-4 py-2 rounded-lg text-sm">
-              Reload
-            </button>
+            <button onClick={() => window.location.reload()} className="bg-brand text-black font-medium px-4 py-2 rounded-lg text-sm">Reload</button>
           </div>
         </div>
       );
@@ -53,6 +45,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
 }
 
 // ─── Helpers ────────────────────────────────────────
+
+const TAB_TITLES: Record<string, string> = {
+  overview: "Dashboard",
+  sales: "Sales & Leads",
+  retention: "Retention",
+  va: "VA Performance",
+  financial: "Financial",
+};
 
 function parseMonthRange(month: string): { start: string; end: string } | null {
   if (month === "All Time") return null;
@@ -68,7 +68,7 @@ function parseMonthRange(month: string): { start: string; end: string } | null {
   return { start, end };
 }
 
-// ─── Dashboard Inner ────────────────────────────────
+// ─── Dashboard ──────────────────────────────────────
 
 function DashboardInner() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -76,9 +76,6 @@ function DashboardInner() {
   const [selectedMonth, setSelectedMonth] = useState("All Time");
 
   const range = useMemo(() => parseMonthRange(selectedMonth), [selectedMonth]);
-  const startDate = range?.start ?? null;
-  const endDate = range?.end ?? null;
-
   const { data: kpis, loading: kpisLoading } = useKPIs();
   const { data: monthly } = useMonthly();
   const { data: sources } = useSources();
@@ -86,8 +83,8 @@ function DashboardInner() {
   const { data: retention } = useRetention();
   const { data: objections } = useObjections();
   const lastSync = useLastSync();
-  const { data: filteredKPIs } = useFilteredKPIs(startDate, endDate);
-  const { data: filteredLeads } = useFilteredLeads(startDate, endDate);
+  const { data: filteredKPIs } = useFilteredKPIs(range?.start ?? null, range?.end ?? null);
+  const { data: filteredLeads } = useFilteredLeads(range?.start ?? null, range?.end ?? null);
 
   const handleSync = useCallback(async () => {
     await fetch("/api/sync", {
@@ -100,18 +97,16 @@ function DashboardInner() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-brand animate-pulse text-lg">Loading…</p>
+        <div className="w-7 h-7 rounded-lg bg-brand animate-pulse" />
       </div>
     );
   }
 
   if (!user) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    if (typeof window !== "undefined") window.location.href = "/login";
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-brand animate-pulse text-lg">Redirecting to login…</p>
+        <p className="text-brand animate-pulse text-sm">Redirecting…</p>
       </div>
     );
   }
@@ -120,7 +115,7 @@ function DashboardInner() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-brand text-lg font-bold tracking-tight mb-2">BADGERLUXCLEAN</h1>
+          <div className="w-7 h-7 rounded-lg bg-brand mx-auto mb-3" />
           <p className="text-neutral-500 text-sm animate-pulse">Loading dashboard…</p>
         </div>
       </div>
@@ -128,63 +123,72 @@ function DashboardInner() {
   }
 
   return (
-    <div className="flex h-screen bg-black">
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        userEmail={user.email || ""}
-        onSignOut={signOut}
-      />
+    <div className="flex min-h-screen bg-black">
+      <div className="hidden md:block shrink-0">
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userEmail={user.email || ""} onSignOut={signOut} />
+      </div>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-neutral-800 px-8 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              {activeTab === "overview" && "Command Center"}
-              {activeTab === "sales" && "Sales & Leads"}
-              {activeTab === "retention" && "Retention"}
-              {activeTab === "va" && "VA Performance"}
-              {activeTab === "financial" && "Financial"}
-            </h2>
-            <p className="text-neutral-500 text-sm">Real-time operational pulse</p>
-          </div>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between px-4 md:px-6 border-b border-white/10 bg-black/80 backdrop-blur-xl">
           <div className="flex items-center gap-4">
+            {/* Mobile logo */}
+            <button onClick={() => setActiveTab("overview")} className="md:hidden flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-brand flex items-center justify-center">
+                <span className="text-black text-[10px] font-bold">BL</span>
+              </div>
+            </button>
+            <h1 className="text-sm font-semibold text-white">{TAB_TITLES[activeTab]}</h1>
+          </div>
+
+          <div className="flex items-center gap-3">
             <LiveIndicator lastSync={lastSync} />
             <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             <SyncButton onSync={handleSync} />
           </div>
+        </header>
+
+        {/* Mobile nav */}
+        <div className="md:hidden flex border-b border-white/10 overflow-x-auto scrollbar-thin">
+          {Object.entries(TAB_TITLES).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                activeTab === key
+                  ? "text-brand border-brand"
+                  : "text-neutral-500 border-transparent"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        <div className="p-8 animate-fadeIn" key={activeTab}>
-          {activeTab === "overview" && (
-            <OverviewTab kpis={kpis} monthly={monthly} retention={retention} filteredKPIs={filteredKPIs} selectedMonth={selectedMonth} />
-          )}
-          {activeTab === "sales" && (
-            <SalesTab sources={sources} objections={objections} selectedMonth={selectedMonth} filteredLeads={filteredLeads} />
-          )}
-          {activeTab === "retention" && (
-            <RetentionTab retention={retention} kpis={kpis} monthly={monthly} />
-          )}
-          {activeTab === "va" && (
-            <VATab vaData={vaData} selectedMonth={selectedMonth} />
-          )}
-          {activeTab === "financial" && (
-            <FinancialTab kpis={kpis} monthly={monthly} />
-          )}
-
-          <div className="text-center py-12 mt-8 border-t border-neutral-800">
-            <p className="text-xs text-neutral-600">
-              BADGERLUXCLEAN DATA COMMAND CENTER — Built by{" "}
-              <span className="text-brand/60 font-medium">Divine Acquisition</span>
-            </p>
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-6 overflow-auto scrollbar-thin">
+          <div className="mx-auto max-w-full animate-fade-in" key={activeTab}>
+            {activeTab === "overview" && (
+              <OverviewTab kpis={kpis} monthly={monthly} retention={retention} filteredKPIs={filteredKPIs} selectedMonth={selectedMonth} />
+            )}
+            {activeTab === "sales" && (
+              <SalesTab sources={sources} objections={objections} selectedMonth={selectedMonth} filteredLeads={filteredLeads} />
+            )}
+            {activeTab === "retention" && (
+              <RetentionTab retention={retention} kpis={kpis} monthly={monthly} />
+            )}
+            {activeTab === "va" && (
+              <VATab vaData={vaData} selectedMonth={selectedMonth} />
+            )}
+            {activeTab === "financial" && (
+              <FinancialTab kpis={kpis} monthly={monthly} />
+            )}
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
-
-// ─── Export ─────────────────────────────────────────
 
 export default function Dashboard() {
   return (

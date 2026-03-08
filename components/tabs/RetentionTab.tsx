@@ -34,9 +34,9 @@ function fmtAxis(v: number): string {
   return `$${v}`;
 }
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#171717",
-  border: "1px solid #333",
+const TT = {
+  backgroundColor: "#111",
+  border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
   fontSize: 12,
 };
@@ -74,10 +74,10 @@ export default function RetentionTab({ retention, kpis, monthly }: Props) {
         {recurGrowth.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={recurGrowth}>
-              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={fmtAxis} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`$${Math.round(Number(v)).toLocaleString()}`, "Recurring Rev"]} />
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtAxis} tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TT} formatter={(v) => [`$${Math.round(Number(v)).toLocaleString()}`, "Recurring Rev"]} />
               <Area type="monotone" dataKey="recur_revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
             </AreaChart>
           </ResponsiveContainer>
@@ -90,11 +90,11 @@ export default function RetentionTab({ retention, kpis, monthly }: Props) {
         {retentionTrend.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={retentionTrend}>
-              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
               <ReferenceLine y={80} stroke="#10b981" strokeDasharray="6 4" label={{ value: "80% target", fill: "#10b981", fontSize: 10, position: "right" }} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${Number(v).toFixed(1)}%`, "Retention"]} />
+              <Tooltip contentStyle={TT} formatter={(v) => [`${Number(v).toFixed(1)}%`, "Retention"]} />
               <Line type="monotone" dataKey="retention" stroke="#EDC02C" strokeWidth={2} dot={{ fill: "#EDC02C", r: 3 }} />
             </LineChart>
           </ResponsiveContainer>

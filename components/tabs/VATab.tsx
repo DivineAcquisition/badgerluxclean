@@ -24,9 +24,9 @@ interface Props {
 
 const VA_COLORS = ["#EDC02C", "#10b981", "#3b82f6", "#8b5cf6", "#f97316", "#14b8a6"];
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#171717",
-  border: "1px solid #333",
+const TT = {
+  backgroundColor: "#111",
+  border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
   fontSize: 12,
 };
@@ -87,7 +87,7 @@ export default function VATab({ vaData }: Props) {
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius="60%" outerRadius="80%" paddingAngle={2} dataKey="value">
                     {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Tooltip contentStyle={TT} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
@@ -106,10 +106,10 @@ export default function VATab({ vaData }: Props) {
           {barData.length === 0 ? <EmptyState message="No data" /> : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={barData}>
-                <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} />
-                <YAxis tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} />
+                <YAxis tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} />
+                <Tooltip contentStyle={TT} />
                 <Legend wrapperStyle={{ fontSize: 11, color: "#737373" }} />
                 <Bar dataKey="Booked" stackId="a" fill="#10b981" />
                 <Bar dataKey="Pending" stackId="a" fill="#f59e0b" />

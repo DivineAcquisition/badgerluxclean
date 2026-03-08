@@ -45,9 +45,9 @@ const RESULT_COLORS: Record<string, string> = {
   "Not booked": "#ef4444",
 };
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#171717",
-  border: "1px solid #333",
+const TT = {
+  backgroundColor: "#111",
+  border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
   fontSize: 12,
 };
@@ -113,7 +113,7 @@ export default function SalesTab({ sources, objections }: Props) {
                   <Pie data={pieSourceData} cx="50%" cy="50%" innerRadius="60%" outerRadius="80%" paddingAngle={2} dataKey="value">
                     {pieSourceData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Tooltip contentStyle={TT} />
                   <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fill="#FFFFFF" fontSize={22} fontWeight="bold">{totals.total}</text>
                 </PieChart>
               </ResponsiveContainer>
@@ -135,7 +135,7 @@ export default function SalesTab({ sources, objections }: Props) {
               <Pie data={resultData} cx="50%" cy="50%" innerRadius="60%" outerRadius="80%" paddingAngle={2} dataKey="value">
                 {resultData.map((e, i) => <Cell key={i} fill={e.color} />)}
               </Pie>
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Tooltip contentStyle={TT} />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
@@ -171,10 +171,10 @@ export default function SalesTab({ sources, objections }: Props) {
           {objChartData.length === 0 ? <EmptyState message="No data" /> : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={objChartData} layout="vertical">
-                <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fill: "#a3a3a3", fontSize: 11 }} width={120} axisLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} />
+                <YAxis dataKey="name" type="category" tick={{ fill: "#a1a1aa", fontSize: 11 }} width={120} axisLine={false} />
+                <Tooltip contentStyle={TT} />
                 <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>

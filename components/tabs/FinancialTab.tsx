@@ -34,9 +34,9 @@ function fmtAxis(v: number): string {
   return `$${v}`;
 }
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#171717",
-  border: "1px solid #333",
+const TT = {
+  backgroundColor: "#111",
+  border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
   fontSize: 12,
 };
@@ -163,11 +163,11 @@ export default function FinancialTab({ kpis, monthly }: Props) {
         {revCostData.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={revCostData}>
-              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tickFormatter={fmtAxis} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-              <Tooltip contentStyle={TOOLTIP_STYLE}
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tickFormatter={fmtAxis} tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+              <Tooltip contentStyle={TT}
                 formatter={(v, name) => name === "Margin %" ? [`${Number(v).toFixed(1)}%`, name] : [`$${Math.round(Number(v)).toLocaleString()}`, name]}
               />
               <Bar yAxisId="left" dataKey="Revenue" fill="#EDC02C" radius={[4, 4, 0, 0]} />
@@ -183,10 +183,10 @@ export default function FinancialTab({ kpis, monthly }: Props) {
         {revenueTypeData.length === 0 ? <EmptyState message="No data yet." /> : (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={revenueTypeData}>
-              <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={fmtAxis} tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE}
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtAxis} tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TT}
                 formatter={(v, name) => [`$${Math.round(Number(v)).toLocaleString()}`, name === "recur_revenue" ? "Recurring" : "One-Time"]}
               />
               <Area type="monotone" dataKey="ot_revenue" stackId="1" stroke="#EDC02C" fill="#EDC02C" fillOpacity={0.3} />
