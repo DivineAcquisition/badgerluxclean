@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
 
 let _admin: SupabaseClient | null = null;
 function getAdmin(): SupabaseClient {
   if (!_admin) {
     _admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-      process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder"
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder"
     );
   }
   return _admin;
 }
+
+function getSheets() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY not set");
+  const creds = JSON.parse(raw);
+  const auth = new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+  });
+  return google.sheets({ version: "v4", auth });
+}
+
+const SHEET_ID = process.env.GOOGLE_SHEETS_ID || "";
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -29,203 +43,189 @@ function parseNum(v: unknown): number {
 function parseDate(v: unknown): string | null {
   if (!v || String(v).trim() === "") return null;
   const s = String(v).trim();
-
-  // ISO: 2025-06-15
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-
-  // MM/DD/YYYY
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
-  }
-
-  // Try native parse
+  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-
   return null;
 }
 
-type SheetRow = Record<string, unknown>;
+type Row = Record<string, string>;
 
-function get(row: SheetRow, key: string): string {
-  return clean(row[key]);
+function sheetToRows(values: string[][], headerRowIdx: number): Row[] {
+  if (!values || values.length <= headerRowIdx) return [];
+  const headers = values[headerRowIdx].map((h) => h.trim());
+  const rows: Row[] = [];
+  for (let i = headerRowIdx + 1; i < values.length; i++) {
+    const row: Row = {};
+    const vals = values[i];
+    if (!vals || vals.every((v) => !v || !v.trim())) continue;
+    headers.forEach((h, ci) => {
+      row[h] = vals[ci] !== undefined ? String(vals[ci]).trim() : "";
+    });
+    rows.push(row);
+  }
+  return rows;
 }
 
-function getNum(row: SheetRow, key: string): number {
-  return parseNum(row[key]);
-}
+function get(r: Row, k: string): string { return clean(r[k]); }
+function getNum(r: Row, k: string): number { return parseNum(r[k]); }
+function getDate(r: Row, k: string): string | null { return parseDate(r[k]); }
 
-function getDate(row: SheetRow, key: string): string | null {
-  return parseDate(row[key]);
-}
+// ─── Mappers ────────────────────────────────────────
 
-// ─── Row Mappers ────────────────────────────────────
-
-function mapBooking(row: SheetRow) {
+function mapBooking(r: Row) {
   return {
-    booking_id: get(row, "Booking ID"),
-    booking_date: getDate(row, "Booking Date"),
-    customer_name: get(row, "Customer Name"),
-    customer_email: get(row, "Customer Email"),
-    customer_phone: get(row, "Customer Phone"),
-    service_type: get(row, "Service Type"),
-    frequency: get(row, "Frequency"),
-    conversion_status: get(row, "Conversion Status"),
-    charge_amount: getNum(row, "Charge Amount"),
-    job_cost: getNum(row, "Job Cost"),
-    status: get(row, "Status") || "Active",
-    acquisition_source: get(row, "Acquisition Source"),
-    provider_assigned: get(row, "Provider Assigned"),
-    va_setter: get(row, "VA / Setter"),
-    booking_source: get(row, "Booking Source"),
-    address: get(row, "Address"),
-    data_source: get(row, "Data Source") || "sync",
+    booking_id: get(r, "Booking ID"),
+    booking_date: getDate(r, "Booking Date"),
+    customer_name: get(r, "Customer Name"),
+    customer_email: get(r, "Customer Email"),
+    customer_phone: get(r, "Customer Phone"),
+    service_type: get(r, "Service Type"),
+    frequency: get(r, "Frequency"),
+    conversion_status: get(r, "Conversion Status"),
+    charge_amount: getNum(r, "Charge Amount"),
+    job_cost: getNum(r, "Job Cost"),
+    status: get(r, "Status") || "Active",
+    acquisition_source: get(r, "Acquisition Source"),
+    provider_assigned: get(r, "Provider Assigned"),
+    va_setter: get(r, "VA / Setter"),
+    booking_source: get(r, "Booking Source"),
+    address: get(r, "Address"),
+    data_source: get(r, "Data Source") || "sync",
     synced_at: new Date().toISOString(),
   };
 }
 
-function mapCustomer(row: SheetRow) {
+function mapCustomer(r: Row) {
   return {
-    customer_id: get(row, "Customer ID"),
-    first_name: get(row, "First Name"),
-    last_name: get(row, "Last Name"),
-    email: get(row, "Email"),
-    phone: get(row, "Phone"),
-    address: get(row, "Address"),
-    city: get(row, "City"),
-    date_created: getDate(row, "Date Created"),
-    acquisition_source: get(row, "Acquisition Source"),
-    customer_type: get(row, "Customer Type"),
-    data_source: get(row, "Data Source") || "sync",
+    customer_id: get(r, "Customer ID"),
+    first_name: get(r, "First Name"),
+    last_name: get(r, "Last Name"),
+    email: get(r, "Email"),
+    phone: get(r, "Phone"),
+    address: get(r, "Address"),
+    city: get(r, "City"),
+    date_created: getDate(r, "Date Created"),
+    acquisition_source: get(r, "Acquisition Source"),
+    customer_type: get(r, "Customer Type"),
+    data_source: get(r, "Data Source") || "sync",
   };
 }
 
-function mapCancellation(row: SheetRow) {
+function mapCancellation(r: Row) {
   return {
-    booking_id: get(row, "Booking ID"),
-    customer_name: get(row, "Customer Name"),
-    customer_email: get(row, "Customer Email"),
-    cancel_date: getDate(row, "Cancel Date"),
-    frequency: get(row, "Frequency"),
-    revenue_lost: getNum(row, "Revenue Lost"),
-    booking_source: get(row, "Booking Source"),
-    acquisition_source: get(row, "Acquisition Source"),
-    provider: get(row, "Provider"),
-    va_setter: get(row, "VA / Setter"),
-    data_source: get(row, "Data Source") || "sync",
+    booking_id: get(r, "Booking ID"),
+    customer_name: get(r, "Customer Name"),
+    customer_email: get(r, "Customer Email"),
+    cancel_date: getDate(r, "Cancel Date"),
+    frequency: get(r, "Frequency"),
+    revenue_lost: getNum(r, "Revenue Lost"),
+    booking_source: get(r, "Booking Source"),
+    acquisition_source: get(r, "Acquisition Source"),
+    provider: get(r, "Provider"),
+    va_setter: get(r, "VA / Setter"),
+    data_source: get(r, "Data Source") || "sync",
   };
 }
 
-function mapCharge(row: SheetRow) {
+function mapCharge(r: Row) {
   return {
-    charge_id: get(row, "Charge ID"),
-    booking_id: get(row, "Booking ID"),
-    customer_name: get(row, "Customer Name"),
-    customer_email: get(row, "Customer Email"),
-    charge_date: getDate(row, "Charge Date"),
-    charge_amount: getNum(row, "Charge Amount"),
-    frequency: get(row, "Frequency"),
-    payment_status: get(row, "Payment Status") || "Paid",
-    tips: getNum(row, "Tips"),
-    extras: getNum(row, "Extras"),
-    provider: get(row, "Provider"),
-    job_cost: getNum(row, "Job Cost"),
-    data_source: get(row, "Data Source") || "sync",
+    charge_id: get(r, "Charge ID"),
+    booking_id: get(r, "Booking ID"),
+    customer_name: get(r, "Customer Name"),
+    customer_email: get(r, "Customer Email"),
+    charge_date: getDate(r, "Charge Date"),
+    charge_amount: getNum(r, "Charge Amount"),
+    frequency: get(r, "Frequency"),
+    payment_status: get(r, "Payment Status") || "Paid",
+    tips: getNum(r, "Tips"),
+    extras: getNum(r, "Extras"),
+    provider: get(r, "Provider"),
+    job_cost: getNum(r, "Job Cost"),
+    data_source: get(r, "Data Source") || "sync",
   };
 }
 
-function mapLead(row: SheetRow) {
+function mapLead(r: Row) {
   return {
-    lead_date: getDate(row, "Date"),
-    name: get(row, "Name"),
-    phone: get(row, "Phone"),
-    email: get(row, "Email"),
-    va_assigned: get(row, "VA Assigned"),
-    brand: get(row, "Tundra or Badger"),
-    source: get(row, "Source"),
-    type_of_clean: get(row, "Type of Clean"),
-    client_type: get(row, "Client Type"),
-    status: get(row, "Where Are We At?"),
-    objection: get(row, "Objection"),
-    luxe_routine_seed: get(row, "Luxe Routine Seed?"),
-    follow_up: get(row, "Follow Up?"),
-    final_result: get(row, "Final Result"),
-    cleaning_date: getDate(row, "Date of Cleaning"),
-    revenue: getNum(row, "Revenue"),
-    provider_pay: getNum(row, "Provider Pay"),
-    region: get(row, "Region"),
-    notes: get(row, "Notes"),
+    lead_date: getDate(r, "Date"),
+    name: get(r, "Name"),
+    phone: get(r, "Phone"),
+    email: get(r, "Email"),
+    va_assigned: get(r, "VA Assigned"),
+    brand: get(r, "Tundra or Badger"),
+    source: get(r, "Source"),
+    type_of_clean: get(r, "Type of Clean"),
+    client_type: get(r, "Client Type"),
+    status: get(r, "Where Are We At?"),
+    objection: get(r, "Objection"),
+    luxe_routine_seed: get(r, "Luxe Routine Seed?"),
+    follow_up: get(r, "Follow Up?"),
+    final_result: get(r, "Final Result"),
+    cleaning_date: getDate(r, "Date of Cleaning"),
+    revenue: getNum(r, "Revenue"),
+    provider_pay: getNum(r, "Provider Pay"),
+    region: get(r, "Region"),
+    notes: get(r, "Notes"),
     data_source: "sync",
   };
 }
 
-// ─── Batch Upsert ───────────────────────────────────
+// ─── Batch Operations ───────────────────────────────
 
-async function batchUpsert(
-  table: string,
-  rows: Record<string, unknown>[],
-  conflictKey: string,
-  batchSize = 500
-): Promise<number> {
+async function batchUpsert(table: string, rows: Record<string, unknown>[], conflictKey: string, batchSize = 500): Promise<number> {
+  const admin = getAdmin();
   let count = 0;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const { error } = await getAdmin()
-      .from(table)
-      .upsert(batch, { onConflict: conflictKey });
-    if (error) {
-      console.error(`Upsert error on ${table} batch ${i}:`, error.message);
-    } else {
-      count += batch.length;
-    }
+    const { error } = await admin.from(table).upsert(batch, { onConflict: conflictKey });
+    if (error) console.error(`Upsert error on ${table} batch ${i}:`, error.message);
+    else count += batch.length;
   }
   return count;
 }
 
-async function batchInsert(
-  table: string,
-  rows: Record<string, unknown>[],
-  batchSize = 500
-): Promise<number> {
+async function batchInsert(table: string, rows: Record<string, unknown>[], batchSize = 500): Promise<number> {
+  const admin = getAdmin();
   let count = 0;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const { error } = await getAdmin().from(table).insert(batch);
-    if (error) {
-      console.error(`Insert error on ${table} batch ${i}:`, error.message);
-    } else {
-      count += batch.length;
-    }
+    const { error } = await admin.from(table).insert(batch);
+    if (error) console.error(`Insert error on ${table} batch ${i}:`, error.message);
+    else count += batch.length;
   }
   return count;
 }
 
-// ─── Auth Check ─────────────────────────────────────
+// ─── Auth ───────────────────────────────────────────
 
 function authorize(req: NextRequest): boolean {
   const secret = process.env.SYNC_SECRET ?? "";
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Bearer ") && auth.slice(7) === secret) return true;
-
-  try {
-    const url = new URL(req.url);
-    if (url.searchParams.get("secret") === secret) return true;
-  } catch { /* ignore */ }
-
+  try { if (new URL(req.url).searchParams.get("secret") === secret) return true; } catch {}
   return false;
 }
 
 async function authorizeBody(req: NextRequest): Promise<boolean> {
   const secret = process.env.SYNC_SECRET ?? "";
-  try {
-    const body = await req.clone().json();
-    if (body?.secret === secret) return true;
-  } catch { /* ignore */ }
+  try { const body = await req.clone().json(); if (body?.secret === secret) return true; } catch {}
   return false;
 }
 
-// ─── POST Handler (Sync) ───────────────────────────
+// ─── Tab config: tab name → header row index (0-based) ─
+
+const TABS: Record<string, { range: string; headerRow: number }> = {
+  Bookings_Raw: { range: "Bookings_Raw", headerRow: 0 },
+  Customers_Raw: { range: "Customers_Raw", headerRow: 0 },
+  Cancellations_Raw: { range: "Cancellations_Raw", headerRow: 0 },
+  Charges_Raw: { range: "Charges_Raw", headerRow: 0 },
+  Leads_Archive: { range: "Leads_Archive", headerRow: 2 },
+};
+
+// ─── POST Handler ───────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -235,82 +235,69 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sheetApiUrl = process.env.SHEET_API_URL ?? "";
-    const sheetApiSecret = process.env.SHEET_API_SECRET ?? "";
-    const sheetUrl = `${sheetApiUrl}?action=readAll&secret=${sheetApiSecret}`;
-    const res = await fetch(sheetUrl, { cache: "no-store" });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Apps Script fetch failed", status: res.status },
-        { status: 502 }
-      );
-    }
-
-    const data = await res.json();
-
+    const sheets = getSheets();
+    const admin = getAdmin();
     const results: Record<string, number> = {};
 
+    const ranges = Object.values(TABS).map((t) => t.range);
+    const resp = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: SHEET_ID,
+      ranges,
+    });
+
+    const valueRanges = resp.data.valueRanges || [];
+    const tabData: Record<string, string[][]> = {};
+    valueRanges.forEach((vr) => {
+      const name = vr.range?.split("!")[0].replace(/'/g, "") || "";
+      tabData[name] = (vr.values as string[][]) || [];
+    });
+
     // Bookings
-    if (data.Bookings_Raw?.rows) {
-      const mapped = (data.Bookings_Raw.rows as SheetRow[])
-        .map(mapBooking)
-        .filter((r) => r.booking_id);
-      results.bookings = await batchUpsert("bookings", mapped, "booking_id");
+    if (tabData.Bookings_Raw) {
+      const rows = sheetToRows(tabData.Bookings_Raw, TABS.Bookings_Raw.headerRow);
+      const mapped = rows.map(mapBooking).filter((r) => r.booking_id);
+      if (mapped.length > 0) results.bookings = await batchUpsert("bookings", mapped, "booking_id");
     }
 
     // Customers
-    if (data.Customers_Raw?.rows) {
-      const mapped = (data.Customers_Raw.rows as SheetRow[])
-        .map(mapCustomer)
-        .filter((r) => r.email);
-      results.customers = await batchUpsert("customers", mapped, "email");
+    if (tabData.Customers_Raw) {
+      const rows = sheetToRows(tabData.Customers_Raw, TABS.Customers_Raw.headerRow);
+      const mapped = rows.map(mapCustomer).filter((r) => r.email);
+      if (mapped.length > 0) results.customers = await batchUpsert("customers", mapped, "email");
     }
 
     // Cancellations
-    if (data.Cancellations_Raw?.rows) {
-      const mapped = (data.Cancellations_Raw.rows as SheetRow[])
-        .map(mapCancellation)
-        .filter((r) => r.booking_id);
-      results.cancellations = await batchUpsert(
-        "cancellations",
-        mapped,
-        "booking_id"
-      );
+    if (tabData.Cancellations_Raw) {
+      const rows = sheetToRows(tabData.Cancellations_Raw, TABS.Cancellations_Raw.headerRow);
+      const mapped = rows.map(mapCancellation).filter((r) => r.booking_id);
+      if (mapped.length > 0) results.cancellations = await batchUpsert("cancellations", mapped, "booking_id");
     }
 
     // Charges
-    if (data.Charges_Raw?.rows) {
-      const mapped = (data.Charges_Raw.rows as SheetRow[])
-        .map(mapCharge)
-        .filter((r) => r.charge_id);
-      results.charges = await batchUpsert("charges", mapped, "charge_id");
+    if (tabData.Charges_Raw) {
+      const rows = sheetToRows(tabData.Charges_Raw, TABS.Charges_Raw.headerRow);
+      const mapped = rows.map(mapCharge).filter((r) => r.charge_id);
+      if (mapped.length > 0) results.charges = await batchUpsert("charges", mapped, "charge_id");
     }
 
     // Leads — full replace
-    if (data.Leads_Archive?.rows) {
-      const mapped = (data.Leads_Archive.rows as SheetRow[])
-        .map(mapLead)
-        .filter((r) => r.name || r.email);
-      await getAdmin().from("leads").delete().neq("id", 0);
-      results.leads = await batchInsert("leads", mapped);
+    if (tabData.Leads_Archive) {
+      const rows = sheetToRows(tabData.Leads_Archive, TABS.Leads_Archive.headerRow);
+      const mapped = rows.map(mapLead).filter((r) => r.name || r.email);
+      if (mapped.length > 0) {
+        await admin.from("leads").delete().neq("id", 0);
+        results.leads = await batchInsert("leads", mapped);
+      }
     }
 
     // Refresh materialized views
-    await getAdmin().rpc("refresh_dashboard_views");
+    await admin.rpc("refresh_dashboard_views");
 
-    return NextResponse.json({
-      success: true,
-      results,
-      duration_ms: Date.now() - start,
-    });
+    return NextResponse.json({ success: true, results, duration_ms: Date.now() - start });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Sync error:", message);
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
@@ -318,16 +305,10 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const sheetApiUrl = process.env.SHEET_API_URL ?? "";
-    const sheetApiSecret = process.env.SHEET_API_SECRET ?? "";
-    const pingUrl = `${sheetApiUrl}?action=ping&secret=${sheetApiSecret}`;
-    const res = await fetch(pingUrl, { cache: "no-store" });
-    const body = await res.text();
-    return NextResponse.json({
-      status: "ok",
-      apps_script: res.ok ? "reachable" : "unreachable",
-      response: body,
-    });
+    const sheets = getSheets();
+    const resp = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: "sheets.properties.title" });
+    const tabNames = resp.data.sheets?.map((s) => s.properties?.title) || [];
+    return NextResponse.json({ status: "ok", sheet_id: SHEET_ID, tabs: tabNames });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ status: "error", error: message });
