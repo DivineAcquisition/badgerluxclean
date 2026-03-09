@@ -1,53 +1,52 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
-import type { User } from "@supabase/supabase-js";
+import { useState, useEffect, useCallback } from "react";
+
+const ALLOWED_DOMAINS = ["badgerluxecleaning.com", "divineacquisition.io"];
+const SHARED_PASSWORD = "Badgerdcc2026!";
+const STORAGE_KEY = "blx-auth";
+
+interface AuthUser {
+  email: string;
+}
+
+function getStored(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
-
-    try {
-      const {
-        data: { subscription: sub },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-      });
-      subscription = sub;
-    } catch (e) {
-      console.error("Auth subscription error:", e);
-    }
-
-    return () => {
-      subscription?.unsubscribe();
-    };
+    setUser(getStored());
+    setLoading(false);
   }, []);
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-  }
+  const signIn = useCallback((email: string, password: string) => {
+    const domain = email.split("@")[1]?.toLowerCase();
+    if (!ALLOWED_DOMAINS.includes(domain)) {
+      throw new Error("Access restricted to authorized domains");
+    }
+    if (password !== SHARED_PASSWORD) {
+      throw new Error("Invalid password");
+    }
+    const u: AuthUser = { email: email.toLowerCase() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+    setUser(u);
+  }, []);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
+  const signOut = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setUser(null);
+  }, []);
 
   return { user, loading, signIn, signOut };
 }

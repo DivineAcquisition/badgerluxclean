@@ -20,22 +20,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Login failed");
-        setSubmitting(false);
-        return;
-      }
-
-      await signIn(email.toLowerCase(), password);
+      signIn(email, password);
       router.push("/");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign in failed");
@@ -54,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm px-4">
         <div className="text-center mb-8">
           <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mx-auto mb-4">
             <span className="text-black text-sm font-bold">BL</span>
@@ -62,9 +48,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-white tracking-tight">
             BadgerLuxClean
           </h1>
-          <p className="text-neutral-500 mt-1 text-sm">
-            Data Command Center
-          </p>
+          <p className="text-neutral-500 mt-1 text-sm">Data Command Center</p>
         </div>
 
         <div className="card-elevated p-8">
@@ -104,7 +88,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-xs text-neutral-600 text-center mt-4">
-            Authorized for @badgerluxecleaning.com and @divineacquisition.io
+            Authorized for @badgerluxecleaning.com &amp; @divineacquisition.io
           </p>
         </div>
       </div>
